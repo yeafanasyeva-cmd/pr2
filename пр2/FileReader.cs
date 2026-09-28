@@ -10,16 +10,11 @@ namespace пр2
     {
         public static List<Shape> ReadShapes(string filePath)
         {
-            List<Shape> shapes = new List<Shape>();
+            var shapes = new List<Shape>();
 
-            string[] lines = File.ReadAllLines(filePath);
-            foreach (string line in lines)
+            foreach (string line in File.ReadLines(filePath))
             {
-                string trimmed = line.Trim();
-                if (string.IsNullOrEmpty(trimmed))
-                    continue;
-
-                Shape shape = ShapeParser.Parse(trimmed);
+                Shape shape = ShapeParser.Parse(line);
                 if (shape != null)
                     shapes.Add(shape);
             }

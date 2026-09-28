@@ -2,7 +2,7 @@
   "profiles": {
     "пр2": {
       "commandName": "Project",
-      "commandLineArgs": "-f D:\\учеба\\5 сем\\разработка интерфейсов (пис)\\пр2\\shapes.txt -o print"
+      "commandLineArgs": "-f shapes.txt -o count"
     }
   }
 }

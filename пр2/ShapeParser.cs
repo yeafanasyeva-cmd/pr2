@@ -11,115 +11,109 @@ namespace пр2
     {
         public static Shape Parse(string line)
         {
-            if (line.StartsWith("Point("))
+            if (string.IsNullOrWhiteSpace(line))
+                return null;
+
+            line = line.Trim();
+
+            try
             {
-                var coords = ExtractNumbers(line);
-                if (coords.Count == 2)
-                    return new Point(coords[0], coords[1]);
+                if (line.StartsWith("Point("))
+                    return ParsePoint(line);
+                if (line.StartsWith("Line("))
+                    return ParseLine(line);
+                if (line.StartsWith("Circle("))
+                    return ParseCircle(line);
             }
-            else if (line.StartsWith("Line("))
+            catch
             {
-                int firstOpen = line.IndexOf('(');
-                int firstClose = FindMatchingParen(line, firstOpen);
-                int secondOpen = line.IndexOf('(', firstClose);
-                int secondClose = FindMatchingParen(line, secondOpen);
-
-                string point1Str = line.Substring(firstOpen, firstClose - firstOpen + 1);
-                string point2Str = line.Substring(secondOpen, secondClose - secondOpen + 1);
-
-                var coords1 = ExtractNumbers(point1Str);
-                var coords2 = ExtractNumbers(point2Str);
-
-                if (coords1.Count == 2 && coords2.Count == 2)
-                {
-                    Point p1 = new Point(coords1[0], coords1[1]);
-                    Point p2 = new Point(coords2[0], coords2[1]);
-                    return new Line(p1, p2);
-                }
-            }
-            else if (line.StartsWith("Circle("))
-            {
-                int open = line.IndexOf('(');
-                int close = FindMatchingParen(line, open);
-                string pointStr = line.Substring(open, close - open + 1);
-
-                var pointCoords = ExtractNumbers(pointStr);
-
-                int afterPoint = close + 1;
-                string rest = line.Substring(afterPoint).TrimStart(',', ' ', ')');
-                rest = rest.TrimEnd(')');
-                var allNumbers = ExtractNumbers(rest);
-
-                if (pointCoords.Count == 2 && allNumbers.Count >= 1)
-                {
-                    Point center = new Point(pointCoords[0], pointCoords[1]);
-                    return new Circle(center, allNumbers[0]);
-                }
+                return null;
             }
 
             return null;
         }
 
-        private static int FindMatchingParen(string s, int openIndex)
+        private static Point ParsePoint(string line)
         {
-            int depth = 0;
-            for (int i = openIndex; i < s.Length; i++)
-            {
-                if (s[i] == '(') depth++;
-                else if (s[i] == ')')
-                {
-                    depth--;
-                    if (depth == 0) return i;
-                }
-            }
-            return -1;
+            string inner = ExtractInner(line, "Point");
+            var parts = SplitTopLevel(inner);
+            if (parts.Count != 2)
+                throw new FormatException();
+
+            double x = ParseDouble(parts[0]);
+            double y = ParseDouble(parts[1]);
+            return new Point(x, y);
         }
 
-        private static List<double> ExtractNumbers(string s)
+        private static Line ParseLine(string line)
         {
-            List<double> numbers = new List<double>();
-            string current = "";
-            foreach (char c in s)
+            string inner = ExtractInner(line, "Line");
+            var parts = SplitTopLevel(inner);
+            if (parts.Count != 2)
+                throw new FormatException();
+
+            var start = ParsePoint(parts[0].Trim());
+            var end = ParsePoint(parts[1].Trim());
+            return new Line(start, end);
+        }
+
+        private static Circle ParseCircle(string line)
+        {
+            string inner = ExtractInner(line, "Circle");
+            var parts = SplitTopLevel(inner);
+            if (parts.Count != 2)
+                throw new FormatException();
+
+            var center = ParsePoint(parts[0].Trim());
+            double radius = ParseDouble(parts[1]);
+            return new Circle(center, radius);
+        }
+
+        private static string ExtractInner(string line, string name)
+        {
+            int open = line.IndexOf('(');
+            int close = line.LastIndexOf(')');
+            if (open < 0 || close < 0 || close <= open)
+                throw new FormatException();
+
+            string prefix = line.Substring(0, open).Trim();
+            if (prefix != name)
+                throw new FormatException();
+
+            if (line.Substring(close + 1).Trim().Length != 0)
+                throw new FormatException();
+
+            return line.Substring(open + 1, close - open - 1);
+        }
+
+        private static List<string> SplitTopLevel(string input)
+        {
+            var result = new List<string>();
+            int depth = 0;
+            int start = 0;
+
+            for (int i = 0; i < input.Length; i++)
             {
-                if (char.IsDigit(c) || c == '.' || c == '-' || c == '+' || c == ',')
+                char c = input[i];
+                if (c == '(') depth++;
+                else if (c == ')') depth--;
+                else if (c == ',' && depth == 0)
                 {
-                    if (c == ',' && !current.Contains('.'))
-                    {
-                        current += '.';
-                    }
-                    else if (c == ',')
-                    {
-                        if (!string.IsNullOrEmpty(current))
-                        {
-                            double val;
-                            if (double.TryParse(current, NumberStyles.Any, CultureInfo.InvariantCulture, out val))
-                                numbers.Add(val);
-                            current = "";
-                        }
-                    }
-                    else
-                    {
-                        current += c;
-                    }
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(current))
-                    {
-                        double val;
-                        if (double.TryParse(current, NumberStyles.Any, CultureInfo.InvariantCulture, out val))
-                            numbers.Add(val);
-                        current = "";
-                    }
+                    result.Add(input.Substring(start, i - start));
+                    start = i + 1;
                 }
             }
-            if (!string.IsNullOrEmpty(current))
-            {
-                double val;
-                if (double.TryParse(current, NumberStyles.Any, CultureInfo.InvariantCulture, out val))
-                    numbers.Add(val);
-            }
-            return numbers;
+
+            result.Add(input.Substring(start));
+            return result;
+        }
+
+        private static double ParseDouble(string s)
+        {
+            return double.Parse(
+                s.Trim(),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
         }
     }
 }
